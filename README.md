@@ -35,8 +35,16 @@ Pulls the last 7 days from a tracking sheet and has Claude write an executive su
 
 ## Architecture
 
-Open the [visual project page](./index.html#architecture) for the flow derived from the sanitized export.
+The diagram below represents the sanitized template flow. External services, credentials, and environment-specific identifiers must be configured before execution.
 
+```mermaid
+flowchart TD
+    A["Daily report trigger"] --> B["Read tracking data from Google Sheets"]
+    B --> C["Select last seven days"]
+    C --> D["Claude executive summary"]
+    D --> E["Email report to team"]
+    D --> F["Archive report in Google Drive"]
+```
 
 ## Workflow
 
