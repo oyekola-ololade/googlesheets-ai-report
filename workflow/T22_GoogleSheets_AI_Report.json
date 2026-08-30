@@ -1,0 +1,490 @@
+{
+  "name": "T22_GoogleSheets_AI_Report",
+  "nodes": [
+    {
+      "id": "b01648be-1e7f-4060-9c9e-3422ea7a131c",
+      "name": "Note_da66adde",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        50,
+        50
+      ],
+      "parameters": {
+        "content": "Created by Oyekola Ololade\nhttps://www.linkedin.com/in/ololade-oyekola-5b1797397/\nn8n Template Library - Gumroad",
+        "width": 300,
+        "height": 100,
+        "color": 4
+      }
+    },
+    {
+      "id": "4a1bed77-b289-4d00-8658-443bf91fd5e4",
+      "name": "Daily Report Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "b9388140-a545-4583-a203-60837e39cd70",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "daily-report",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "44771bb5-9f08-4456-9069-2683877c25d6",
+      "name": "Fetch Sheet Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        450,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/YOUR_SHEET_ID/values/DailyStats",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GOOGLE_TOKEN"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "2bb92e23-e1d2-4ba2-9f98-4fa81eddadd2",
+      "name": "Extract Last 7 Days",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        650,
+        300
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e5c807d6-6a4d-4361-a926-4bac4fe4c5f8",
+              "name": "data",
+              "value": "={{ $json.values.slice(-7) }}",
+              "type": "string"
+            },
+            {
+              "id": "3852366f-d72b-46e9-8c1b-a221e5ce2e46",
+              "name": "headers",
+              "value": "={{ $json.values[0] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "6ba87646-cf81-4b08-9d8f-dd51589e21f1",
+      "name": "Claude Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        850,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "YOUR_CLAUDE_API_KEY"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "claude-3-sonnet-20240229"
+            },
+            {
+              "name": "max_tokens",
+              "value": 1000
+            },
+            {
+              "name": "messages",
+              "value": "[{\"role\":\"user\",\"content\":\"Generate executive summary from this data: {{ $json.data }}. Include YoY growth, top product, trends.\"}]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "02f6e31e-4041-44cf-87ae-40ac1c3c0111",
+      "name": "Summary OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1050,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "02dae927-5f9e-40ae-92ae-313c46aa5cab",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "4b7d7e7e-2e81-47d4-81a3-8199369ae9f1",
+      "name": "Format Report",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1250,
+        250
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b3ca09f5-e117-43b7-b338-24ce4f104789",
+              "name": "summary",
+              "value": "={{ $json.content[0].text }}",
+              "type": "string"
+            },
+            {
+              "id": "2536c43d-95fe-4052-ba60-154776b68b5b",
+              "name": "report_date",
+              "value": "={{ $now.format('MMM dd') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "efb0af6c-385b-48a4-8a0b-bb3d794c633e",
+      "name": "Email Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1450,
+        250
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.sendgrid.com/v3/mail/send",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SENDGRID_KEY"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "personalizations",
+              "value": "[{\"to\": [{\"email\": \"team@yourcompany.com\"}]}]"
+            },
+            {
+              "name": "from_email",
+              "value": "{\"email\": \"reports@yourcompany.com\"}"
+            },
+            {
+              "name": "subject",
+              "value": "=\"Daily Report - \" + $json.report_date"
+            },
+            {
+              "name": "content",
+              "value": "[{\"type\": \"text/html\", \"value\": \"<h2>Daily Report</h2><p>{{ $json.summary }}</p>\"}]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a674438b-aa25-4cc6-abe0-efd76eb2d2b0",
+      "name": "Archive to Drive",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1450,
+        350
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GOOGLE_TOKEN"
+            },
+            {
+              "name": "Content-Type",
+              "value": "multipart/related"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "metadata",
+              "value": "{\"name\": \"report_{{ $now.format(YYYY-MM-DD) }}.txt\", \"mimeType\": \"text/plain\"}"
+            },
+            {
+              "name": "media",
+              "value": "={{ $json.summary }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "f77903ad-294d-4105-9adc-83a58f64cc82",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1250,
+        450
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a63a453f-041c-4bcd-becf-b75c74ce4ef1",
+              "name": "error",
+              "value": "Report generation failed",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "e647fdfd-215f-4183-81f9-46c3c7168863",
+      "name": "Error Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1450,
+        450
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "YOUR_SLACK_WEBHOOK_URL",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": false,
+        "headerParameters": {
+          "parameters": []
+        },
+        "options": {},
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "Daily report failed to generate"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "4389e508-214d-400b-bf0a-d23b190b4833",
+      "name": "End",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1650,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Daily Report Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Sheet Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Sheet Data": {
+      "main": [
+        [
+          {
+            "node": "Extract Last 7 Days",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Last 7 Days": {
+      "main": [
+        [
+          {
+            "node": "Claude Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Summary": {
+      "main": [
+        [
+          {
+            "node": "Summary OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summary OK?": {
+      "main": [
+        [
+          {
+            "node": "Format Report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Report": {
+      "main": [
+        [
+          {
+            "node": "Email Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Report": {
+      "main": [
+        [
+          {
+            "node": "Archive to Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Archive to Drive": {
+      "main": [
+        [
+          {
+            "node": "End",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Handler": {
+      "main": [
+        [
+          {
+            "node": "Error Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Alert": {
+      "main": [
+        [
+          {
+            "node": "End",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    "Gumroad",
+    "Production",
+    "Template",
+    "Oyekola Ololade"
+  ],
+  "pinData": {},
+  "staticData": null
+}
